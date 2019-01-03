@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+	1. <mapper namespace="패키지명.인턴페이스명">
+	2. select문장은 반드시resultType을 기술해야 한다.
+	   select return type이 int형이면 'select *' ==> 'select Count(*)'로 바꾼다.
+	3. insert, update, delete 문장은 parameterType만 기술한다.
+	      마이바티스가 알아서 성공, 실패 여부의 결과값을 넘긴다.
+	4. parameterType, resultType이 클래스타입인 경우 패키지명, 클래스명을 기술한다.
+	5. 문장의 끝에 ';'을 붙이지 않는다.
+	6. 파라미터 값이 2개이상일 때는 parameterType을 java.util.Map또는 VO로 받는다.
+	7. 파라미터 일반변수명은 반드시 일치해야한다. 예) #{strid}
+	8. <id="식별자">는 유일해야 하며, 인터페이스의 메소드명이 와야 한다.
+	      따라서 인터페이스 메소드 갯수만큼 Mapper도 작성해야 한다.
+	9. preparedStatement의 '?' 대신에 pstmt에서 set한 #{변수명}이 온다.
+	
+-->
+<mapper namespace="spring.mvcjsp.project.persistence.hostDAO">
+
+<!-- id체크 -->
+<select id="idCheck" resultType="int">
+	SELECT COUNT(*) FROM host WHERE h_id=#{strId}
+</select>
+
+<!-- id,pwd 체크 -->
+<select id="idpwdcheck" resultType="int" parameterType="map">
+	SELECT COUNT(*) FROM host WHERE h_id=#{strId} AND h_pwd=#{strpwd}
+</select>
+
+<!-- 상품갯수 -->
+<select id="getArticleCnt" resultType="int">
+    SELECT COUNT(*) FROM stocklist
+</select>
+
+<!-- 재고목록 -->
+<select id="getArticleList" parameterType="java.util.Map"
+		resultType="spring.mvcjsp.project.vo.stockVO">
+	SELECT * FROM stocklist ORDER BY num ASC
+</select>
+
+<!-- 재고추가 -->
+<insert id="inventory_add" parameterType="spring.mvcjsp.project.vo.stockVO">
+    INSERT INTO stocklist(num, img, subject, color, age, price, reg_date, kind) 
+    VALUES(stocklist_seq.NEXTVAL, #{img}, #{subject}, #{color}, #{age}, #{price}, #{reg_date}, #{kind})
+</insert>
+
+<!-- 재고삭제 -->
+<delete id="stockdelete" parameterType="spring.mvcjsp.project.vo.stockVO">
+	DELETE FROM stocklist WHERE num=#{num}
+</delete>
+
+<!-- 재고수정상세페이지 -->
+<select id="getArticle" resultType="spring.mvcjsp.project.vo.stockVO">
+		SELECT * FROM stocklist WHERE num=#{num}
+</select>
+
+<!-- 재고수정처리 -->
+<update id="update" parameterType="spring.mvcjsp.project.vo.stockVO">
+		UPDATE stocklist SET subject=#{subject}, img=#{img}, color=#{color}, age=#{age}, price=#{price} 
+		WHERE num=#{num}
+</update>
+
+<delete id="hostby" parameterType="spring.mvcjsp.project.vo.orderVO">
+	DELETE FROM orderlist WHERE num=#{num}
+</delete>
+ 
+<!-- 환불리스트 -->
+<select id="guestcancellist" parameterType="java.util.Map"
+		resultType="spring.mvcjsp.project.vo.ordernoVO">
+	SELECT * FROM ordercancel ORDER BY num ASC
+</select>
+<!--환불처리  -->
+<delete id="ordercancel" parameterType="spring.mvcjsp.project.vo.orderokVO">
+	DELETE FROM ordercancel WHERE num=#{num}
+</delete>
+
+<!--환불처리 후 환불요청 목록 삭제  -->
+<delete id="orderokno" parameterType="spring.mvcjsp.project.vo.orderokVO">
+	DELETE FROM ordercomplete WHERE num=#{num}
+</delete>
+
+<!-- 결산 -->
+<select id="top" resultType="int">
+<![CDATA[ 
+	SELECT SUM(price)
+	FROM ordercomplete
+	WHERE img LIKE '%top%'
+	GROUP BY price
+]]>
+</select>
+<select id="pants" resultType="int">
+<![CDATA[ 
+	SELECT SUM(price)
+	FROM ordercomplete
+	WHERE img LIKE '%pants%'
+	GROUP BY price
+]]>
+</select>
+<select id="shoes" resultType="int">
+<![CDATA[ 
+	SELECT SUM(price)
+	FROM ordercomplete
+	WHERE img LIKE '%shoes%'
+	GROUP BY price
+]]>
+</select>
+<select id="sum" resultType="int">
+<![CDATA[ 
+	SELECT SUM(price)
+	FROM ordercomplete
+]]>
+</select>
+<!-- 환불리스트 -->
+</mapper>

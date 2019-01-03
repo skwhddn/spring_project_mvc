@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+	1. <mapper namespace="패키지명.인턴페이스명">
+	2. select문장은 반드시resultType을 기술해야 한다.
+	   select return type이 int형이면 'select *' ==> 'select Count(*)'로 바꾼다.
+	3. insert, update, delete 문장은 parameterType만 기술한다.
+	      마이바티스가 알아서 성공, 실패 여부의 결과값을 넘긴다.
+	4. parameterType, resultType이 클래스타입인 경우 패키지명, 클래스명을 기술한다.
+	5. 문장의 끝에 ';'을 붙이지 않는다.
+	6. 파라미터 값이 2개이상일 때는 parameterType을 java.util.Map또는 VO로 받는다.
+	7. 파라미터 일반변수명은 반드시 일치해야한다. 예) #{strid}
+	8. <id="식별자">는 유일해야 하며, 인터페이스의 메소드명이 와야 한다.
+	      따라서 인터페이스 메소드 갯수만큼 Mapper도 작성해야 한다.
+	9. preparedStatement의 '?' 대신에 pstmt에서 set한 #{변수명}이 온다.
+	
+-->
+<mapper namespace="spring.mvcjsp.project.persistence.PTDAO">
+
+<!-- id체크 -->
+<select id="idCheck" resultType="int">
+	SELECT COUNT(*) FROM member WHERE m_id=#{strId}
+</select>
+
+<!-- id,pwd 체크 -->
+<select id="idpwdcheck" resultType="int" parameterType="map">
+	SELECT COUNT(*) FROM member WHERE m_id=#{strId} AND m_pwd=#{strpwd}
+</select>
+
+<!-- 회원가입 -->
+<insert id="insertMember" parameterType="spring.mvcjsp.project.vo.projectVO">
+	INSERT INTO member(m_id, m_pwd, m_name, m_address, m_hp, m_email, m_reg_date) 
+	VALUES(#{id}, #{pwd}, #{name}, #{address} , #{hp}, #{email}, #{reg_date})
+</insert>
+
+<!-- 회원수정상세페이지 -->
+<select id="getMemberInfo"  resultType="spring.mvcjsp.project.vo.projectVO">
+	SELECT * FROM member WHERE m_id=#{strId}
+</select>
+
+<!-- 회원탈퇴 -->
+<delete id="deleteMember">
+	DELETE FROM member WHERE m_id=#{strId}
+</delete>
+
+<!-- 게시글 갯수 -->
+<select id="getArticleCnt" resultType="int">
+    SELECT COUNT(*) FROM mvc_board
+</select>
+
+<!-- 게시글목록 -->
+<select id="getArticleList" parameterType="java.util.Map"
+		resultType="spring.mvcjsp.project.vo.BoardVO">
+	<![CDATA[ 
+			SELECT * 
+			  FROM(SELECT num, m_id, pwd, subject, content, readCnt, 
+							ref, ref_step, ref_level, reg_date, ip, 
+							rownum rNum 
+						   FROM (
+								SELECT * FROM mvc_board 
+						ORDER BY ref DESC, ref_step ASC
+						)
+					)
+			  WHERE rNum >= #{start} AND rNum <= #{end}
+	 	]]>
+	</select>
+<!-- 조회수 증가 -->
+
+<update id="addReadCnt">
+		update mvc_board set readCnt=readCnt+1 WHERE num=#{num}
+</update>
+
+<!-- 글상세페이지 -->
+<select id="getArticle" resultType="spring.mvcjsp.project.vo.BoardVO">
+		SELECT * FROM mvc_board WHERE num=#{num}
+</select>
+
+<!-- 비밀번호체크 -->
+<select id="pwdCheck" parameterType="java.util.Map" resultType="int">
+		SELECT COUNT(*) FROM mvc_board WHERE num=#{num} AND pwd=#{pwd}
+</select>
+
+<!-- 글수정 처리 -->
+<update id="updateBoard" parameterType="spring.mvcjsp.project.vo.BoardVO">
+		UPDATE mvc_board SET subject=#{subject}, content=#{content}, pwd=#{pwd} 
+		WHERE num=#{num}
+</update>
+
+<!-- 게시글 작성 / 답변글 작성 -->
+<!-- 1.답변글이 아닌 경우(제목글인 경우) -->
+<select id="getMaxNum" resultType="int">
+		SELECT MAX(num) FROM mvc_board
+</select>
+	
+<!-- 2.답변글인 경우 -->
+<update id="updateReply" parameterType="spring.mvcjsp.project.vo.BoardVO">
+		<![CDATA[ 
+		update mvc_board set ref_step = ref_step+1 WHERE ref=#{ref} AND ref_step > #{ref_step}
+		]]>
+</update>
+
+<!-- 3.글쓰기/답변글 쓰기-->
+<!-- 바구니에서 값을 꺼내서 insert한다-->
+<insert id="insertBoard" parameterType="spring.mvcjsp.project.vo.BoardVO">
+		INSERT INTO mvc_board(num, m_id, pwd, subject, content, readCnt, ref, 
+		ref_step, ref_level, reg_date, ip) 
+		VALUES(board_seq.nextval,#{m_id, jdbcType=VARCHAR},#{pwd},#{subject},#{content},0,#{ref},
+		#{ref_step},#{ref_level},#{reg_date},#{ip})
+</insert>
+<!-- 1.답글이 존재하는지 여부 -->
+<select id="checkReply" resultType="int" parameterType="spring.mvcjsp.project.vo.BoardVO">
+		<![CDATA[ 
+		SELECT COUNT(*) FROM mvc_board WHERE ref=#{ref} AND ref_step=#{ref_step} +1 AND 
+		ref_level > #{ref_level}
+		]]>
+</select>
+
+<!-- 2.답글이 존재하는 경우 삭제 -->
+<delete id="deleteAll"  parameterType="spring.mvcjsp.project.vo.BoardVO">
+		DELETE mvc_board WHERE num=#{num} OR (ref=#{ref} AND ref_level > #{ref_level})	
+</delete>
+<update id="updateRef_step" parameterType="spring.mvcjsp.project.vo.BoardVO">
+		<![CDATA[ 
+		UPDATE mvc_board SET ref_step=ref_step-1 
+		WHERE ref=#{ref} AND ref_step > #{ref_step}
+		]]> 
+</update>
+<delete id="deleteBoard" parameterType="int">
+	    DELETE mvc_board WHERE num=#{num}
+</delete>
+<!-- 상품 카테고리 -->
+<select id="getTopList" parameterType="java.util.Map"
+		resultType="spring.mvcjsp.project.vo.stockVO">
+		SELECT * FROM stocklist WHERE kind='TOP' ORDER BY num ASC
+</select>
+<select id="getPantsList" parameterType="java.util.Map"
+		resultType="spring.mvcjsp.project.vo.stockVO">
+		SELECT * FROM stocklist WHERE kind='PANTS' ORDER BY num ASC
+</select>
+<select id="getShoseList" parameterType="java.util.Map"
+		resultType="spring.mvcjsp.project.vo.stockVO">
+		SELECT * FROM stocklist WHERE kind='SHOES' ORDER BY num ASC
+</select>
+<!-- 카테고리 끝 -->
+
+<!-- 상품 상세페이지 -->
+<select id="detailpage" resultType="spring.mvcjsp.project.vo.stockVO">
+		SELECT * FROM stocklist WHERE num=#{num}
+</select>
+<!-- 상품 상세페이지  끝-->
+
+<!-- 즉시구매 -->
+<insert id="cartgo" parameterType="spring.mvcjsp.project.vo.orderVO">
+	INSERT INTO orderlist(o_num, num, m_id, img, subject, color, age, price) 
+	VALUES(orderlist_seq.nextval, #{num}, #{m_id}, #{img} , #{subject}, #{color}, #{age}, #{price})
+</insert>
+<!-- 즉시구매 끝 -->
+
+<!-- 주문목록 -->
+<select id="getorderlist" parameterType="java.util.Map"
+		resultType="spring.mvcjsp.project.vo.orderVO">
+		SELECT * FROM orderlist ORDER BY num ASC
+</select>
+<!-- 주문목록 끝 -->
+
+<!-- 장바구니 담기 -->
+<insert id="cart" parameterType="spring.mvcjsp.project.vo.cartlistVO">
+	INSERT INTO cartlist(c_num, num, m_id, img, subject, color, age, price) 
+	VALUES(cartlist_seq.nextval, #{num}, #{m_id}, #{img} , #{subject}, #{color}, #{age}, #{price})
+</insert>
+<!-- 장바구니 담기 끝 -->
+
+<!-- 장바구니 목록 -->
+<select id="getcartlist" parameterType="java.util.Map"
+		resultType="spring.mvcjsp.project.vo.cartlistVO">
+		SELECT * FROM cartlist ORDER BY num ASC
+</select>
+<!-- 장바구니 목록 끝 -->
+
+<!-- 장바구니 삭제 -->
+<delete id="cartdelete" parameterType="spring.mvcjsp.project.vo.cartlistVO">
+	DELETE FROM cartlist WHERE num=#{num}
+</delete>
+<!-- 장바구니 삭제 끝-->
+
+<!-- 장바구니 개별 구매 -->
+<insert id="order" parameterType="spring.mvcjsp.project.vo.orderVO">
+	INSERT INTO orderlist(o_num, num, m_id, img, subject, color, age, price)
+	VALUES(orderlist_seq.nextval, #{num}, #{m_id}, #{img}, #{subject}, #{color}, #{age}, #{price})
+</insert>
+<!-- 장바구니 개별 구매 끝 -->
+<!-- 장바구니 목록 구매 후 삭제 -->
+<delete id="cartby" parameterType="spring.mvcjsp.project.vo.cartlistVO">
+	delete from cartlist WHERE num=#{num}
+</delete>
+<!-- 장바구니 목록 구매 후 삭제 끝 -->
+<!-- 주문취소 -->
+<delete id="orderno" parameterType="spring.mvcjsp.project.vo.orderVO">
+	DELETE FROM orderlist WHERE num=#{num}
+</delete>
+<!-- 주문취소 끝 -->
+<!-- 주문완료목록 -->
+<select id="orderoklist" parameterType="java.util.Map"
+		resultType="spring.mvcjsp.project.vo.orderokVO">
+	SELECT * FROM ordercomplete ORDER BY num ASC 
+</select>
+<!-- 주문승인 -->
+<insert id="orderok" parameterType="spring.mvcjsp.project.vo.orderokVO">
+	INSERT INTO ordercomplete(oc_num, num, m_id, img, subject, color, age, price)
+	VALUES(ordercomplete_seq.nextval, #{num}, #{m_id}, #{img}, #{subject}, #{color}, #{age}, #{price})
+</insert>
+<delete id="hostorderdelete" parameterType="spring.mvcjsp.project.vo.orderVO">
+	delete from orderlist WHERE num=#{num}
+</delete>
+<!-- 환불신청 -->
+<insert id="ordercancel" parameterType="spring.mvcjsp.project.vo.ordernoVO">
+	INSERT INTO ordercancel(cc_num, num, m_id, img, subject, color, age, price)
+	VALUES(ordercancel_seq.nextval, #{num}, #{m_id}, #{img}, #{subject}, #{color}, #{age}, #{price})
+</insert>
+<delete id="guestordercancel" parameterType="spring.mvcjsp.project.vo.orderokVO">
+	delete from ordercomplete WHERE num=#{num}
+</delete>
+</mapper>
